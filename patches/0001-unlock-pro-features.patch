@@ -1,0 +1,33 @@
+diff --git a/src/pro/license/LicenseManager.swift b/src/pro/license/LicenseManager.swift
+index 4386913..a948d0b 100644
+--- a/src/pro/license/LicenseManager.swift
++++ b/src/pro/license/LicenseManager.swift
+@@ -48,7 +48,7 @@ class LicenseManager {
+     /// can drive activation without side effects.
+     var onBeforeProUnlock: () -> Void = { }
+ 
+-    private(set) var state: LicenseState = .trialExpired {
++    private(set) var state: LicenseState = .pro {
+         didSet { onStateChanged?(state) }
+     }
+ 
+@@ -176,7 +176,18 @@ class LicenseManager {
+         }
+     }
+ 
+-    func computeState() -> LicenseState {
++    /// alt-tab-unlocked: the Pro gate is short-circuited here, and only here.
++    /// Everything downstream keys off this one value: `isProAvailable` / `isProLocked`,
++    /// `ProFeature.attemptUse()`, the `if case .pro` early-return in
++    /// `ProTransitionScheduler`, and the preference downgrade in
++    /// `ProTransitionManager.onProLockEngaged()`. Returning `.pro` therefore unlocks the
++    /// gated features and suppresses the Day-X prompts without touching any of them.
++    /// It also means `revalidateWithServer()` never runs: it guards on a keychain
++    /// license key that is never written, so the app makes no call to the license API.
++    /// The upstream implementation is preserved below, unused.
++    func computeState() -> LicenseState { .pro }
++
++    func computeStateUpstream() -> LicenseState {
+         if keychain.value(account: Self.keychainKeyAccount) != nil {
+             let lastValidationResult = defaults.bool(forKey: "lastValidationResult")
+             guard lastValidationResult else { return .trialExpired }

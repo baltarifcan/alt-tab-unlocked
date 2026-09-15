@@ -1,0 +1,36 @@
+diff --git a/src/events/PreferencesEvents.swift b/src/events/PreferencesEvents.swift
+index 273a09d..27ceac3 100644
+--- a/src/events/PreferencesEvents.swift
++++ b/src/events/PreferencesEvents.swift
+@@ -79,11 +79,15 @@ class PreferencesEvents {
+         Menubar.menubarIconCallback(nil)
+     }
+ 
++    /// alt-tab-unlocked: Sparkle's periodic check is pinned off. The appcast serves the
++    /// upstream notarized build, so letting it run would silently replace this
++    /// locally-built app and restore the Pro gate. Updates come from
++    /// `alt-tab-unlocked update`, which re-pins upstream and rebuilds. The dropdown in
++    /// Settings > General still moves, but no longer has any effect.
+     private static func applyUpdatePolicyPreference() {
+         GeneralTab.policyLock = true
+-        let policy = Preferences.updatePolicy
+-        App.updaterController?.updater.automaticallyDownloadsUpdates = policy == .autoInstall
+-        App.updaterController?.updater.automaticallyChecksForUpdates = policy == .autoInstall || policy == .autoCheck
++        App.updaterController?.updater.automaticallyDownloadsUpdates = false
++        App.updaterController?.updater.automaticallyChecksForUpdates = false
+         GeneralTab.policyLock = false
+     }
+ }
+diff --git a/src/preferences/Preferences.swift b/src/preferences/Preferences.swift
+index d62d8f5..80ae97d 100644
+--- a/src/preferences/Preferences.swift
++++ b/src/preferences/Preferences.swift
+@@ -36,7 +36,7 @@ class Preferences {
+             "menubarIconShown": "true",
+             "language": LanguagePreference.systemDefault.indexAsString,
+             "exceptions": defaultExceptions(),
+-            "updatePolicy": UpdatePolicyPreference.autoCheck.indexAsString,
++            "updatePolicy": UpdatePolicyPreference.manual.indexAsString, // alt-tab-unlocked: see PreferencesEvents.applyUpdatePolicyPreference
+             "crashPolicy": CrashPolicyPreference.ask.indexAsString,
+             "hideThumbnails": "false",
+             "hideSpaceNumberLabels": "true",

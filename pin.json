@@ -1,0 +1,11 @@
+{
+  "upstream": "https://github.com/lwouis/alt-tab-macos",
+  "owner": "lwouis",
+  "repo": "alt-tab-macos",
+  "tag": "v11.6.1",
+  "commit": "850a72351ac03b6509442b7a56f9bd9fad8fb24b",
+  "version": "11.6.1",
+  "licenceFile": "LICENCE.md",
+  "licenceSha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+  "pinnedAt": "2026-09-15"
+}
