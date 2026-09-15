@@ -17,10 +17,12 @@ require_xcode
 
 VERSION="$(pin version)"
 IDENTITY="$("$ATU_ROOT/scripts/signing-identity.sh" --resolve)"
+DEPLOYMENT_TARGET="${ATU_DEPLOYMENT_TARGET:-12.0}"
 
 bold "Building AltTab ${VERSION}"
 info "Xcode:    $("$XCODEBUILD" -version | head -1) at $DEVELOPER_DIR"
 info "identity: ${IDENTITY}"
+info "min macOS: ${DEPLOYMENT_TARGET} (upstream ships 10.14.4; see config/local.xcconfig)"
 
 # Upstream's release config is a notarized Developer ID build signed with a
 # certificate we do not have, so every value below is an override. release.xcconfig
@@ -53,6 +55,17 @@ OTHER_CODE_SIGN_FLAGS = --timestamp=none --deep --options runtime
 // so a new SDK deprecating one API would turn into a build failure that has
 // nothing to do with the patches.
 SWIFT_TREAT_WARNINGS_AS_ERRORS = NO
+
+// Upstream ships 10.14.4 because it distributes to everyone. Each new SDK raises
+// the floor it will accept, and Xcode 27 rejects 10.14.4 outright, so inheriting
+// upstream's value makes the build fail on a toolchain upgrade for a reason that
+// has nothing to do with this machine.
+//
+// The cost of raising it is that this build will not run on anything older than
+// the value below — which is fine for an app built on the Mac that runs it, and
+// is the whole point of building it here. Override with ATU_DEPLOYMENT_TARGET if
+// you ever want to hand the result to an older Mac.
+MACOSX_DEPLOYMENT_TARGET = ${DEPLOYMENT_TARGET}
 XCCONFIG
 ok "wrote config/local.xcconfig"
 

@@ -31,32 +31,63 @@ die()   { printf '\n\033[31mERROR\033[0m %s\n' "$*" >&2; exit 1; }
 
 pin() { jq -re ".$1" "$PIN"; }
 
-# Prefer the App Store Xcode, which is what genome reinstalls after a wipe.
-# Xcode-beta is opt-in only: upstream CI builds on a release Xcode, and the
-# project sets SWIFT_TREAT_WARNINGS_AS_ERRORS, so a beta toolchain is the most
-# likely thing to break a build for reasons that have nothing to do with us.
-resolve_developer_dir() {
-  if [ -n "${ATU_DEVELOPER_DIR:-}" ]; then
-    printf '%s' "$ATU_DEVELOPER_DIR"; return
-  fi
-  for candidate in /Applications/Xcode.app /Applications/Xcode-beta.app; do
-    [ -d "$candidate/Contents/Developer" ] && { printf '%s' "$candidate/Contents/Developer"; return; }
-  done
-  die "no Xcode found in /Applications. AltTab is an .xcodeproj with a code-signing
-      phase; the Command Line Tools alone cannot build it. genome installs Xcode
-      through homebrew.masApps."
+# Pick an Xcode to build with.
+#
+# Two traps here, both learned the hard way:
+#
+#   1. The licence is accepted per Xcode install, and `sudo xcodebuild -license
+#      accept` applies it to whatever `xcode-select -p` currently points at —
+#      which is not necessarily the one this script resolves. So the licence is
+#      part of choosing, not a check bolted on afterwards.
+#   2. Preference is for the App Store Xcode, because that is the one genome
+#      reinstalls after a wipe, and because upstream's CI builds on a release
+#      toolchain. A beta is a fallback, not a default.
+#
+# Nothing here touches `xcode-select`: which Xcode is globally selected is a
+# machine-wide decision, and this build has no business making it.
+licence_accepted() {
+  DEVELOPER_DIR="$1" "$XCODEBUILD" -license check >/dev/null 2>&1
 }
 
 require_xcode() {
-  DEVELOPER_DIR="$(resolve_developer_dir)"
-  export DEVELOPER_DIR
   [ -x "$XCODEBUILD" ] || die "$XCODEBUILD is missing"
-  if ! "$XCODEBUILD" -license check >/dev/null 2>&1; then
-    die "the Xcode licence has not been accepted yet. Run this once, it needs a password:
 
-      sudo xcodebuild -license accept
-      sudo xcodebuild -runFirstLaunch"
+  local candidates=()
+  if [ -n "${ATU_DEVELOPER_DIR:-}" ]; then
+    candidates=("$ATU_DEVELOPER_DIR")
+  else
+    for c in /Applications/Xcode.app /Applications/Xcode-beta.app; do
+      [ -d "$c/Contents/Developer" ] && candidates+=("$c/Contents/Developer")
+    done
   fi
+
+  [ ${#candidates[@]} -gt 0 ] || die "no Xcode found in /Applications.
+
+      AltTab is an .xcodeproj with a code-signing phase; the Command Line Tools
+      alone cannot build it. genome installs Xcode through homebrew.masApps."
+
+  for c in "${candidates[@]}"; do
+    if licence_accepted "$c"; then
+      DEVELOPER_DIR="$c"; export DEVELOPER_DIR
+      case "$c" in
+        */Xcode-beta.app/*)
+          warn "building with a prerelease Xcode ($c).
+        Upstream builds on a release toolchain, so if this fails in a way the
+        patches cannot explain, accept the licence on /Applications/Xcode.app
+        and try again." ;;
+      esac
+      return
+    fi
+  done
+
+  die "an Xcode is installed but its licence has not been accepted.
+
+      The licence is per-install, and plain \`sudo xcodebuild -license accept\`
+      applies to whatever \`xcode-select -p\` points at ($(xcode-select -p 2>/dev/null || echo 'nothing')),
+      which is not necessarily the one needed here. Name it explicitly:
+
+        sudo env DEVELOPER_DIR=${candidates[0]} xcodebuild -license accept
+        sudo env DEVELOPER_DIR=${candidates[0]} xcodebuild -runFirstLaunch"
 }
 
 installed_version() {
