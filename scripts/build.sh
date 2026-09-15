@@ -13,6 +13,13 @@
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 require_xcode
+
+# Before anything expensive: make sure there is a stable signing identity to
+# sign with. Needs no sudo and no authorisation dialog, so it is safe to do
+# unattended on a fresh machine rather than being a step you have to remember.
+# ATU_SIGNING=adhoc opts out.
+"$ATU_ROOT/scripts/signing-identity.sh" --ensure
+
 "$ATU_ROOT/scripts/fetch.sh"
 
 VERSION="$(pin version)"

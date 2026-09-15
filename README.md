@@ -133,23 +133,39 @@ sudo xcodebuild -license accept
 sudo xcodebuild -runFirstLaunch
 ```
 
-### Signing, and why you probably want a certificate
+### Signing
+
+Handled automatically; this section is only here to explain what it did.
 
 macOS binds TCC permissions — Accessibility and Screen Recording, both of which
-AltTab is useless without — to the code signature. An ad-hoc signature has no
-stable identity, so the system falls back to the cdhash, which changes on
-**every rebuild**: you would re-grant Accessibility after every upgrade, and the
-failure is silent (the app launches and lists no windows).
+AltTab is useless without — to the app's *designated requirement*:
 
-The build works ad-hoc out of the box, which is what makes an unattended
-rebuild possible. Run this once to get a stable signature instead:
-
-```sh
-alt-tab-unlocked signing-cert
+```
+ad-hoc:      identifier "AltTab" and cdhash H"<hash of this exact build>"
+certificate: identifier "AltTab" and certificate leaf = H"<hash of the cert>"
 ```
 
-It generates a self-signed code-signing certificate, imports it into the login
-keychain and trusts it for code signing. macOS will prompt for your password.
+The ad-hoc form changes on **every rebuild**, so every upgrade silently costs
+AltTab its Accessibility grant — and the failure is not an error message, it is
+the switcher listing no windows. So the build generates a self-signed
+certificate on first run and signs with that instead, which is stable for as
+long as the certificate is.
+
+The certificate is deliberately **not** added to the trust store. `codesign`
+signs perfectly well with an untrusted self-signed identity — `find-identity`
+reports it as `CSSMERR_TP_NOT_TRUSTED` and signs with it anyway — and the
+signature is just as stable. Skipping the trust step means no `sudo` and no
+authorisation dialog, which is what makes this safe to run unattended on a
+fresh machine. Trusting a self-signed root for code signing is a real
+system-wide decision and nothing here needs it.
+
+`ATU_SIGNING=adhoc` opts out. `alt-tab-unlocked signing-cert` creates the
+certificate on its own if you want it before the first build.
+
+Two footguns this hit, recorded so the next person does not:
+`security import` rejects an empty PKCS#12 passphrase, and cannot read the
+PBKDF2/AES MAC OpenSSL 3 writes by default — both surface as the same
+`MAC verification failed (wrong password?)`.
 
 ## Nix
 
