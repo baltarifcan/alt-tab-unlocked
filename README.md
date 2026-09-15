@@ -126,12 +126,18 @@ Needs a real Xcode, not just the Command Line Tools — the project is an
 (Sparkle, ShortcutRecorder, AppCenter, all vendored upstream so the build needs
 no network for dependencies), and runs a code-signing phase.
 
-One-time, if Xcode has never been run:
+One-time, if Xcode has never been run. Note that the licence is accepted **per
+install**, and a bare `xcodebuild -license accept` applies it to whatever
+`xcode-select -p` points at — which on a machine with both Xcode and Xcode-beta
+is probably not the one you mean. Name it:
 
 ```sh
-sudo xcodebuild -license accept
-sudo xcodebuild -runFirstLaunch
+sudo env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+     xcodebuild -license accept
 ```
+
+`build.sh` picks the first Xcode whose licence is actually accepted, preferring
+the App Store one, and says so when it falls back to a prerelease.
 
 ### Signing
 
