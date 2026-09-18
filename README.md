@@ -173,35 +173,32 @@ Two footguns this hit, recorded so the next person does not:
 PBKDF2/AES MAC OpenSSL 3 writes by default — both surface as the same
 `MAC verification failed (wrong password?)`.
 
-## Nix
+## Installing the tool
 
-```nix
-{
-  inputs.alt-tab-unlocked.url = "github:baltarifcan/alt-tab-unlocked";
-}
+The tool is the scripts in this checkout. Put it on `PATH` with a symlink:
+
+```sh
+git clone https://github.com/baltarifcan/alt-tab-unlocked
+ln -s "$PWD/alt-tab-unlocked/scripts/cli.sh" ~/.local/bin/alt-tab-unlocked
 ```
 
-`homeManagerModules.default` provides `programs.alt-tab-unlocked`:
+`cli.sh` resolves symlinks to find its own checkout, so the link can live
+anywhere. Set `ATU_ROOT` explicitly to point it at a different one.
 
-```nix
-programs.alt-tab-unlocked = {
-  enable = true;
-  # autoInstall = true;  # build during activation; off by default, see below
-};
-```
+Runtime dependencies come from `PATH`: `bash`, `git`, `curl`, `jq`, `sed`,
+`grep`, `diff` and `find`. Everything but `jq` ships with macOS.
 
-The flake packages **the builder**, not the app. There is no derivation that
-produces `AltTab.app`: the sandbox has no `/System/Library/PrivateFrameworks`,
-no login keychain and no `xcodebuild`, and nixpkgs' `xcbuild` does not stand in
-for it on a project this shape. Nix owns what is genuinely reproducible — the
-pinned commit, the patches, the tool and its dependencies — and the impure part
-stays visibly impure rather than being dressed up as a derivation.
+This repo ships **the builder**, not the app. There is no packaged
+`AltTab.app` and there cannot be one: the build needs
+`/System/Library/PrivateFrameworks`, the login keychain and a real
+`xcodebuild`. What is pinned is what is genuinely reproducible — the upstream
+commit, the patches and the licence check — and the impure part stays visibly
+impure rather than being dressed up as something it is not.
 
-`autoInstall` is off by default. An `xcodebuild` is minutes of work needing the
-network and a working Xcode, and home-manager activation is the wrong place to
-find out one of those is missing, because a failure there fails the whole
-switch. Left off, activation only reports drift and you run the install when you
-mean to.
+Installing is deliberately a command you run, never something that happens
+during an unrelated update. An `xcodebuild` is minutes of work needing the
+network and a working Xcode, and finding out one of those is missing should not
+be a side effect of something else.
 
 ## Licence
 

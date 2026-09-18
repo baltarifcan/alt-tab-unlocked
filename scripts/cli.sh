@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
-# Entry point. The Nix wrapper sets ATU_ROOT and puts the runtime deps on PATH;
-# running from a git checkout works too, ATU_ROOT just defaults to the checkout.
+# Entry point. ATU_ROOT defaults to the checkout this script lives in; set it
+# explicitly to run the scripts from somewhere else.
+#
+# Runtime dependencies come from PATH: bash, git, curl, jq, sed, grep, diff and
+# find. All but jq ship with macOS; jq comes from Homebrew.
 
 set -euo pipefail
-: "${ATU_ROOT:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+# Resolve symlinks before deriving the root. Putting a link to this script on
+# PATH (~/.local/bin/alt-tab-unlocked -> .../scripts/cli.sh) is the normal way
+# to install it, and dirname on the *link* would give the link's directory --
+# ~/.local -- rather than the checkout, so every subcommand below would point
+# at a path that does not exist.
+_atu_self=${BASH_SOURCE[0]}
+while [ -L "$_atu_self" ]; do
+  _atu_link=$(readlink "$_atu_self")
+  case "$_atu_link" in
+    /*) _atu_self=$_atu_link ;;
+    *)  _atu_self=$(dirname "$_atu_self")/$_atu_link ;;
+  esac
+done
+: "${ATU_ROOT:=$(cd "$(dirname "$_atu_self")/.." && pwd)}"
+unset _atu_self _atu_link
 export ATU_ROOT
 
 usage() {
